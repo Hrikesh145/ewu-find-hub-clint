@@ -1,0 +1,100 @@
+@import url('https://fonts.googleapis.com/css2?family=Google+Sans:ital,opsz,wght@0,17..18,400..700;1,17..18,400..700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400..800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap');
+
+@import "tailwindcss";
+
+@plugin "daisyui" {
+  themes: ["light"];
+}
+
+@plugin "daisyui/theme" {
+  name: "light";
+  default: true;
+
+  --color-primary:         #0B3D91;
+  --color-primary-content: #ffffff;
+
+  --color-secondary:         #071F55;
+  --color-secondary-content: #ffffff;
+
+  --color-accent:         #1A66D4;
+  --color-accent-content: #ffffff;
+
+  --color-neutral:         #0D1117;
+  --color-neutral-content: #ffffff;
+
+  --color-base-100: #ffffff;
+  --color-base-200: #F2F4F9;
+  --color-base-300: #ECF0F8;
+  --color-base-content: #0D1117;
+
+  --color-info:    #1A66D4;
+  --color-success: #0F6E50;
+  --color-warning: #9A5500;
+  --color-error:   #B81C2E;
+
+  --color-info-content:    #ffffff;
+  --color-success-content: #ffffff;
+  --color-warning-content: #ffffff;
+  --color-error-content:   #ffffff;
+
+  --radius-selector: 100px;
+  --radius-field:    8px;
+  --radius-box:      14px;
+}
+
+@theme {
+  --font-sans:    "Google Sans", system-ui, sans-serif;
+  --font-display: "Syne", system-ui, sans-serif;
+  --font-mono:    "JetBrains Mono", monospace;
+
+  --color-page:   #F8F9FC;
+  --color-ink:    #0D1117;
+  --color-ink-60: rgba(13,17,23,0.60);
+  --color-ink-30: rgba(13,17,23,0.30);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  scroll-behavior: smooth;
+  color-scheme: light;
+}
+
+body {
+  font-family:            "Google Sans", system-ui, sans-serif;
+  background-color:       #F8F9FC;
+  color:                  #1E2533;
+  -webkit-font-smoothing: antialiased;
+  overflow-x:             hidden;
+  min-height:             100vh;
+}
+
+#root {
+  position:         relative;
+  z-index:          1;
+  background-color: #F8F9FC;
+  min-height:       100vh;
+}
+
+::selection {
+  background: rgba(11, 61, 145, 0.12);
+  color:      #0D1117;
+}
+
+:focus-visible {
+  outline:        2px solid #0B3D91;
+  outline-offset: 2px;
+  border-radius:  4px;
+}
+
+::-webkit-scrollbar       { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background:    rgba(11, 61, 145, 0.18);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(11, 61, 145, 0.35);
+}
