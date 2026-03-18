@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router';
+import { useState } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router';
 import { useForm } from 'react-hook-form';
 import toast, { Toaster } from 'react-hot-toast';
 import Swal from 'sweetalert2';
-import '../../../components/Shared/Auth/Auth.css';
 import Logo from '../../../components/Shared/Logo/Logo';
+import '../../../components/Shared/Auth/Auth.css';
+import useAuth from '../../../hooks/useAuth';
 
 const GoogleIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
@@ -24,6 +25,10 @@ const ArrowIcon = () => (
 
 const Login = () => {
   const [loading, setLoading] = useState(false);
+  const { signInUser, signInWithGoogle } = useAuth();
+  const navigate  = useNavigate();
+  const location  = useLocation();
+  const from      = location.state?.from?.pathname || '/';
 
   const {
     register,
@@ -31,66 +36,90 @@ const Login = () => {
     formState: { errors },
   } = useForm();
 
-  /* ── Email/Password Submit ── */
+  /* ── Email / Password ── */
   const onSubmit = async (data) => {
     setLoading(true);
-    console.log('Login data:', data);
-
     try {
-      // TODO: replace with your Firebase signInWithEmailAndPassword
-      // await signInWithEmailAndPassword(auth, data.email, data.password);
+      const result = await signInUser(data.email, data.password);
+      console.log('Logged in user:', result.user);
 
-      // ── simulate success for now ──
-      await new Promise((r) => setTimeout(r, 800));
-
-      toast.success('Logged in successfully!', {
+      toast.success(`Welcome back, ${result.user.displayName || 'Student'}!`, {
         style: {
-          fontFamily: "'Plus Jakarta Sans', sans-serif",
-          fontWeight: 600,
-          fontSize: '14px',
+          fontFamily:   "'Plus Jakarta Sans', sans-serif",
+          fontWeight:   600,
+          fontSize:     '14px',
           borderRadius: '100px',
-          padding: '12px 20px',
+          padding:      '12px 20px',
         },
       });
 
+      navigate(from, { replace: true });
+
     } catch (err) {
       console.error('Login error:', err);
-
       Swal.fire({
         icon:              'error',
         title:             'Login failed',
-        text:              err?.message || 'Invalid email or password. Please try again.',
+        text:              getFirebaseError(err.code),
         confirmButtonText: 'Try again',
         confirmButtonColor:'#0B3D91',
-        borderRadius:      '16px',
-        customClass:       { popup: 'swal-popup' },
       });
     } finally {
       setLoading(false);
     }
   };
 
-  /* ── Google Sign In ── */
+  /* ── Google ── */
   const handleGoogle = async () => {
-    console.log('Google sign-in triggered');
-
     try {
-      // TODO: replace with your Firebase signInWithPopup(auth, googleProvider)
-      // await signInWithPopup(auth, googleProvider);
+      const result = await signInWithGoogle();
+      console.log('Google login:', result.user);
 
-      toast.success('Signed in with Google!', {
+      // save user to DB
+      await saveUserToDB({
+        name:      result.user.displayName,
+        email:     result.user.email,
+        photoURL:  result.user.photoURL,
+        studentId: '',
+        role:      'student',
+      });
+
+      toast.success(`Welcome, ${result.user.displayName}!`, {
         style: {
-          fontFamily: "'Plus Jakarta Sans', sans-serif",
-          fontWeight: 600,
-          fontSize: '14px',
+          fontFamily:   "'Plus Jakarta Sans', sans-serif",
+          fontWeight:   600,
+          fontSize:     '14px',
           borderRadius: '100px',
         },
       });
+
+      navigate(from, { replace: true });
 
     } catch (err) {
       console.error('Google login error:', err);
       toast.error('Google sign-in failed. Please try again.');
     }
+  };
+
+  /* ── Save user to MongoDB ── */
+  const saveUserToDB = async (userData) => {
+    await fetch(`${import.meta.env.VITE_API_URL}/users`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(userData),
+    });
+  };
+
+  /* ── Firebase error messages ── */
+  const getFirebaseError = (code) => {
+    const errors = {
+      'auth/user-not-found':      'No account found with this email.',
+      'auth/wrong-password':      'Incorrect password. Please try again.',
+      'auth/invalid-credential':  'Invalid email or password.',
+      'auth/too-many-requests':   'Too many attempts. Please try again later.',
+      'auth/user-disabled':       'This account has been disabled.',
+    };
+    return errors[code] || 'Something went wrong. Please try again.';
   };
 
   return (
@@ -100,21 +129,20 @@ const Login = () => {
       <div className="auth-card">
         <div className="auth-card__body">
 
-          {/* ── Logo ── */}
-          <div className="mb-7"> 
+          {/* Logo */}
+          <div className="mb-7">
             <Logo href="/" size="md" />
           </div>
 
-          {/* ── Heading ── */}
-          <div className="auth-title">Welcome back</div>
-          <div className="auth-sub">
+          {/* Heading */}
+          <h1 className="auth-title">Welcome back</h1>
+          <p className="auth-sub">
             New to FindHub? <Link to="/register">Create an account →</Link>
-          </div>
+          </p>
 
-          {/* ── Form ── */}
+          {/* Form */}
           <form onSubmit={handleSubmit(onSubmit)} noValidate>
 
-            {/* Email */}
             <div className="fg">
               <label className="fl">Email address</label>
               <input
@@ -129,12 +157,9 @@ const Login = () => {
                   },
                 })}
               />
-              {errors.email && (
-                <span className="f-error">✕ {errors.email.message}</span>
-              )}
+              {errors.email && <span className="f-error">✕ {errors.email.message}</span>}
             </div>
 
-            {/* Password */}
             <div className="fg">
               <label className="fl">Password</label>
               <input
@@ -146,31 +171,28 @@ const Login = () => {
                   minLength: { value: 6, message: 'At least 6 characters required' },
                 })}
               />
-              {errors.password && (
-                <span className="f-error">✕ {errors.password.message}</span>
-              )}
+              {errors.password && <span className="f-error">✕ {errors.password.message}</span>}
             </div>
 
-            {/* Forgot */}
             <div className="forgot-row">
               <Link to="/forgot-password">Forgot password?</Link>
             </div>
 
-            {/* Submit */}
             <button type="submit" className="btn-submit" disabled={loading}>
               {loading ? 'Signing in...' : 'Sign in'}
               {!loading && <ArrowIcon />}
             </button>
+
           </form>
 
-          {/* ── Divider ── */}
+          {/* Divider */}
           <div className="auth-divider">
             <div className="auth-divider__line" />
             <div className="auth-divider__txt">or continue with</div>
             <div className="auth-divider__line" />
           </div>
 
-          {/* ── Google ── */}
+          {/* Google */}
           <button className="btn-google" onClick={handleGoogle} type="button">
             <GoogleIcon />
             Continue with Google

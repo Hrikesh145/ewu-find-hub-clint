@@ -252,3 +252,94 @@
   font-weight:     500;
 }
 .auth-terms a:hover { text-decoration: underline; }
+
+/* ── Image Upload ── */
+.fi-upload {
+  display:       block;
+  width:         100%;
+  border:        1.5px dashed rgba(13,17,23,0.18);
+  border-radius: 10px;
+  cursor:        pointer;
+  transition:    border-color 0.15s, background 0.15s;
+  overflow:      hidden;
+}
+.fi-upload:hover {
+  border-color: #4A8FE8;
+  background:   rgba(11,61,145,0.02);
+}
+.fi-upload--error  { border-color: #B81C2E; }
+.fi-upload__input  { display: none; }
+
+.fi-upload__content {
+  display:     flex;
+  align-items: center;
+  gap:         12px;
+  padding:     12px 14px;
+}
+
+.fi-upload__icon {
+  width:           36px;
+  height:          36px;
+  background:      #EEF4FF;
+  border-radius:   8px;
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  color:           #0B3D91;
+  flex-shrink:     0;
+}
+
+.fi-upload__preview {
+  width:         36px;
+  height:        36px;
+  border-radius: 50%;
+  object-fit:    cover;
+  border:        2px solid #EEF4FF;
+  flex-shrink:   0;
+}
+
+.fi-upload__txt {
+  font-size:      13px;
+  font-weight:    500;
+  color:          rgba(13,17,23,0.60);
+  display:        flex;
+  flex-direction: column;
+  gap:            2px;
+}
+
+.fi-upload__hint {
+  font-family: "JetBrains Mono", monospace;
+  font-size:   10px;
+  color:       rgba(13,17,23,0.35);
+  font-weight: 400;
+}
+
+.fi-upload__change {
+  font-size:   13px;
+  font-weight: 500;
+  color:       #0B3D91;
+}
+
+.f-uploading {
+  font-family: "JetBrains Mono", monospace;
+  font-size:   11px;
+  color:       #0B3D91;
+  font-weight: 500;
+  margin-top:  4px;
+  display:     flex;
+  align-items: center;
+  gap:         6px;
+}
+.f-uploading::before {
+  content:          '';
+  width:            10px;
+  height:           10px;
+  border:           2px solid #0B3D91;
+  border-top-color: transparent;
+  border-radius:    50%;
+  animation:        spin 0.7s linear infinite;
+  display:          inline-block;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

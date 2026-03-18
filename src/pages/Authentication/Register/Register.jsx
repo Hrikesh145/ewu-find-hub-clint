@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from "react";
-import { Link } from "react-router";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router";
 import { useForm } from "react-hook-form";
 import toast, { Toaster } from "react-hot-toast";
 import Swal from "sweetalert2";
-import "../../../components/Shared/Auth/Auth.css";
 import Logo from "../../../components/Shared/Logo/Logo";
 import useAuth from "../../../hooks/useAuth";
+import "../../../components/Shared/Auth/Auth.css";
 
 const GoogleIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
@@ -40,7 +40,25 @@ const ArrowIcon = () => (
   </svg>
 );
 
-/* ── Password rule pill ── */
+const UploadIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+    <path
+      d="M8 2v8M5 5l3-3 3 3"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M2 11v1a2 2 0 002 2h8a2 2 0 002-2v-1"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
+/* ── Password Rule Pill ── */
 const Rule = ({ ok, label }) => (
   <div className={`pw-rule ${ok ? "pw-rule--ok" : "pw-rule--fail"}`}>
     {ok ? "✓" : "✕"} {label}
@@ -49,7 +67,11 @@ const Rule = ({ ok, label }) => (
 
 const Register = () => {
   const [loading, setLoading] = useState(false);
-  const { createUser } = useAuth();
+  const [imageUploading, setImageUploading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState(null);
+
+  const { createUser, updateUserProfile, signInWithGoogle } = useAuth();
+  const navigate = useNavigate();
 
   const {
     register,
@@ -58,22 +80,81 @@ const Register = () => {
     formState: { errors },
   } = useForm({ mode: "onChange" });
 
-  /* watch password for live rule validation */
   const password = watch("password", "");
-
   const rules = {
     hasUpper: /[A-Z]/.test(password),
     hasLower: /[a-z]/.test(password),
     hasLength: password.length >= 6,
   };
 
-  /* ── Email/Password Submit ── */
+  /* ── Upload image to ImgBB ── */
+  const uploadToImgBB = async (imageFile) => {
+    const formData = new FormData();
+    formData.append("image", imageFile);
+
+    const res = await fetch(
+      `https://api.imgbb.com/1/upload?key=${import.meta.env.VITE_IMGBB_API_KEY}`,
+      { method: "POST", body: formData },
+    );
+    const data = await res.json();
+
+    if (!data.success) throw new Error("Image upload failed");
+    return data.data.url;
+  };
+
+  /* ── Handle image preview ── */
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setPreviewUrl(URL.createObjectURL(file));
+    }
+  };
+
+  /* ── Save user to MongoDB ── */
+  const saveUserToDB = async (userData) => {
+    const res = await fetch(`${import.meta.env.VITE_API_URL}/users`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(userData),
+    });
+    const text = await res.text();
+    return text ? JSON.parse(text) : {};
+  };
+
+  /* ── Main Submit ── */
   const onSubmit = async (data) => {
     setLoading(true);
     try {
-      const userCredential = await createUser(data.email, data.password);
-      console.log("Registered user:", userCredential.user);
+      /* 1. Upload image to ImgBB */
+      setImageUploading(true);
+      const imageFile = data.photo[0];
+      const photoURL = await uploadToImgBB(imageFile);
+      setImageUploading(false);
+      console.log("Uploaded photo URL:", photoURL);
 
+      /* 2. Create Firebase user */
+      const userCredential = await createUser(data.email, data.password);
+      console.log("Firebase user created:", userCredential.user);
+
+      /* 3. Update Firebase profile */
+      await updateUserProfile({
+        displayName: data.name,
+        photoURL: photoURL,
+      });
+
+      /* 4. Save to MongoDB */
+      const dbUser = {
+        name: data.name,
+        email: data.email,
+        photoURL: photoURL,
+        studentId: data.studentId,
+        role: "student",
+        createdAt: new Date(),
+      };
+      await saveUserToDB(dbUser);
+      console.log("User saved to DB:", dbUser);
+
+      /* 5. Success */
       await Swal.fire({
         icon: "success",
         title: "Account created!",
@@ -81,12 +162,16 @@ const Register = () => {
         confirmButtonText: "Get started →",
         confirmButtonColor: "#0B3D91",
       });
+
+      navigate("/");
     } catch (err) {
       console.error("Register error:", err);
+      setImageUploading(false);
+
       Swal.fire({
         icon: "error",
         title: "Registration failed",
-        text: err?.message || "Something went wrong.",
+        text: err?.message || "Something went wrong. Please try again.",
         confirmButtonText: "Try again",
         confirmButtonColor: "#0B3D91",
       });
@@ -95,15 +180,22 @@ const Register = () => {
     }
   };
 
-  /* ── Google Sign Up ── */
+  /* ── Google ── */
   const handleGoogle = async () => {
-    console.log("Google register triggered");
-
     try {
-      // TODO: replace with your Firebase signInWithPopup(auth, googleProvider)
-      // await signInWithPopup(auth, googleProvider);
+      const result = await signInWithGoogle();
+      console.log("Google register:", result.user);
 
-      toast.success("Registered with Google!", {
+      await saveUserToDB({
+        name: result.user.displayName,
+        email: result.user.email,
+        photoURL: result.user.photoURL,
+        studentId: "",
+        role: "student",
+        createdAt: new Date(),
+      });
+
+      toast.success(`Welcome, ${result.user.displayName}!`, {
         style: {
           fontFamily: "'Plus Jakarta Sans', sans-serif",
           fontWeight: 600,
@@ -111,11 +203,15 @@ const Register = () => {
           borderRadius: "100px",
         },
       });
+
+      navigate("/");
     } catch (err) {
       console.error("Google register error:", err);
       toast.error("Google sign-up failed. Please try again.");
     }
   };
+
+  const isSubmitting = loading || imageUploading;
 
   return (
     <>
@@ -123,18 +219,18 @@ const Register = () => {
 
       <div className="auth-card">
         <div className="auth-card__body">
-          {/* ── Logo ── */}
+          {/* Logo */}
           <div className="mb-7">
             <Logo href="/" size="md" />
           </div>
 
-          {/* ── Heading ── */}
-          <div className="auth-title">Create your account</div>
-          <div className="auth-sub">
+          {/* Heading */}
+          <h1 className="auth-title">Create your account</h1>
+          <p className="auth-sub">
             Already registered? <Link to="/login">Sign in →</Link>
-          </div>
+          </p>
 
-          {/* ── Form ── */}
+          {/* Form */}
           <form onSubmit={handleSubmit(onSubmit)} noValidate>
             {/* Name + Student ID */}
             <div className="fg2">
@@ -158,13 +254,13 @@ const Register = () => {
                 <label className="fl">Student ID</label>
                 <input
                   type="text"
-                  placeholder="e.g. 2021-1-60-001"
+                  placeholder="2021-1-60-001"
                   className={`fi ${errors.studentId ? "fi--error" : ""}`}
                   {...register("studentId", {
                     required: "Student ID is required",
                     pattern: {
                       value: /^[0-9\-]+$/,
-                      message: "Only numbers and dashes allowed",
+                      message: "Numbers and dashes only",
                     },
                   })}
                 />
@@ -194,23 +290,54 @@ const Register = () => {
               )}
             </div>
 
-            {/* Photo URL */}
+            {/* Photo Upload */}
             <div className="fg">
-              <label className="fl">Photo URL</label>
-              <input
-                type="url"
-                placeholder="https://example.com/photo.jpg"
-                className={`fi ${errors.photoURL ? "fi--error" : ""}`}
-                {...register("photoURL", {
-                  required: "Photo URL is required",
-                  pattern: {
-                    value: /^https?:\/\/.+/,
-                    message: "Must be a valid URL starting with http/https",
-                  },
-                })}
-              />
-              {errors.photoURL && (
-                <span className="f-error">✕ {errors.photoURL.message}</span>
+              <label className="fl">Profile photo</label>
+              <label
+                className={`fi-upload ${errors.photo ? "fi-upload--error" : ""}`}
+              >
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="fi-upload__input"
+                  {...register("photo", {
+                    required: "Profile photo is required",
+                  })}
+                  onChange={(e) => {
+                    register("photo").onChange(e);
+                    handleImageChange(e);
+                  }}
+                />
+                <div className="fi-upload__content">
+                  {previewUrl ? (
+                    <>
+                      <img
+                        src={previewUrl}
+                        alt="preview"
+                        className="fi-upload__preview"
+                      />
+                      <span className="fi-upload__change">Click to change</span>
+                    </>
+                  ) : (
+                    <>
+                      <div className="fi-upload__icon">
+                        <UploadIcon />
+                      </div>
+                      <span className="fi-upload__txt">
+                        Click to upload photo
+                        <span className="fi-upload__hint">
+                          JPG, PNG, WEBP — max 5MB
+                        </span>
+                      </span>
+                    </>
+                  )}
+                </div>
+              </label>
+              {errors.photo && (
+                <span className="f-error">✕ {errors.photo.message}</span>
+              )}
+              {imageUploading && (
+                <span className="f-uploading">Uploading image...</span>
               )}
             </div>
 
@@ -235,7 +362,6 @@ const Register = () => {
                   },
                 })}
               />
-              {/* live rule pills */}
               <div className="pw-rules">
                 <Rule ok={rules.hasUpper} label="Uppercase" />
                 <Rule ok={rules.hasLower} label="Lowercase" />
@@ -250,28 +376,32 @@ const Register = () => {
             <button
               type="submit"
               className="btn-submit"
-              disabled={loading}
+              disabled={isSubmitting}
               style={{ marginTop: "8px" }}
             >
-              {loading ? "Creating account..." : "Create account"}
-              {!loading && <ArrowIcon />}
+              {isSubmitting
+                ? imageUploading
+                  ? "Uploading image..."
+                  : "Creating account..."
+                : "Create account"}
+              {!isSubmitting && <ArrowIcon />}
             </button>
           </form>
 
-          {/* ── Divider ── */}
+          {/* Divider */}
           <div className="auth-divider">
             <div className="auth-divider__line" />
             <div className="auth-divider__txt">or sign up with</div>
             <div className="auth-divider__line" />
           </div>
 
-          {/* ── Google ── */}
+          {/* Google */}
           <button className="btn-google" onClick={handleGoogle} type="button">
             <GoogleIcon />
             Continue with Google
           </button>
 
-          {/* ── Terms ── */}
+          {/* Terms */}
           <div className="auth-terms">
             By creating an account you agree to our{" "}
             <Link to="/terms">Terms of Service</Link> and{" "}
