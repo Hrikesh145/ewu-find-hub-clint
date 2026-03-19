@@ -19,6 +19,7 @@ import ManageMyItems from "../pages/ManageMyItems/ManageMyItems";
 
 import AdminItems from "../pages/AdminItems/AdminItems";
 import NotFound from "../pages/NotFound/NotFound";
+import UpdateItems from "../pages/UpdateItems/UpdateItems";
 
 
 
@@ -54,6 +55,10 @@ export const router = createBrowserRouter([
       {
         path:    "myItems",
         element: <PrivateRoute><ManageMyItems /></PrivateRoute>,
+      },
+      {
+        path:"updateItems/:id",
+        element: <PrivateRoute><UpdateItems /></PrivateRoute>,
       },
 
       /* Admin only */
