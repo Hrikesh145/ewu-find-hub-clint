@@ -330,3 +330,18 @@
   .nb__burger { display: flex;  }
   .nb__inner  { padding: 0 16px; }
 }
+.nb__drop-item--admin {
+  color:      #0B3D91;
+  font-weight:700;
+  background: #EEF4FF;
+  margin-bottom: 4px;
+}
+.nb__drop-item--admin:hover {
+  background: #DBEAFE;
+  color:      #0B2D7A;
+}
+.nb__mobile-link--admin {
+  color:       #0B3D91;
+  font-weight: 700;
+  background:  #EEF4FF;
+}
