@@ -170,9 +170,9 @@ const AllItems = () => {
       if (filter !== "All") params.postType = filter.toLowerCase();
 
       const res = await axiosInstance.get("/items", { params });
-      return res.data;
+      return res.data.filter(item => item.status !== 'returned');
     },
-    staleTime: 1000 * 30,
+
   });
 
   return (
